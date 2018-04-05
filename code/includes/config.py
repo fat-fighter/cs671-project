@@ -11,7 +11,9 @@ data_dir = "data/squad"
 vocab_path = data_dir + "/vocab.dat"
 embed_path = data_dir + "/glove.trimmed.300.npz"
 
-dropout_val = 1.0
+train_dropout_val = 1.0
+
+train_embeddings = False
 
 
 def get_paths(mode):
@@ -23,4 +25,4 @@ def get_paths(mode):
 
 
 question_train, context_train, answer_train = get_paths("train")
-question_dev, context_dev, answer_dev = get_paths("val")
+question_val, context_val, answer_val = get_paths("val")
