@@ -2,10 +2,11 @@ import numpy as np
 
 
 class squad_dataset(object):
-    def __init__(self, question_file, context_file, answer_file, root="", batch_size=1):
+    def __init__(self, question_file, context_file, answer_file, label_file, root="", batch_size=1):
         self.question_file = root + question_file
         self.context_file = root + context_file
         self.answer_file = root + answer_file
+        self.label_file = root + label_file
 
         self.batch_size = batch_size
 
@@ -20,11 +21,12 @@ class squad_dataset(object):
 
     def __iter__(self):
         question_file_iter = self.__iter_file(self.question_file)
-        answer_file_iter = self.__iter_file(self.answer_file)
         context_file_iter = self.__iter_file(self.context_file)
+        answer_file_iter = self.__iter_file(self.answer_file)
+        label_file_iter = self.__iter_file(self.label_file)
 
         batch = []
-        for question, context, answer in zip(question_file_iter, context_file_iter, answer_file_iter):
+        for question, context, answer in zip(question_file_iter, context_file_iter, answer_file_iter, label_file_iter):
             batch.append((question, context, answer))
             if len(batch) == self.batch_size:
                 yield np.array(batch)
@@ -43,14 +45,6 @@ class squad_dataset(object):
 
 
 def pad_sequences(sequences, token):
-    """
-    Args:
-            sequences	:: list		:: a generator of lists or tuples
-            token		:: numeric	:: the number to pad the sequence with
-    Returns:
-            a list of list where each sublist has the same length
-    """
-
     max_length = max([len(x) for x in sequences])
 
     sequences_padded, sequences_length = [], []
@@ -74,8 +68,8 @@ def is_outlier(points, thresh=3.5):
     -----------
         points : An numobservations by numdimensions array of observations
         thresh : The modified z-score to use as a threshold. Observations with
-            a modified z-score (based on the median absolute deviation) greater
-            than this value will be classified as outliers.
+                 a modified z-score (based on the median absolute deviation)
+                 greater than this value will be classified as outliers.
 
     Returns:
     --------
