@@ -88,7 +88,7 @@ def evaluate_model(graph, sess, dataset):
         em_1 += _em_1
         em_2 += _em_2
 
-        em_score += np.sum(np.sum(match, axis=0) >= 1)
+        em_score += np.sum(np.sum(match, axis=1) == 2, axis=0)
         length += sample
 
     em_1 /= float(length)
@@ -96,7 +96,4 @@ def evaluate_model(graph, sess, dataset):
 
     em_score /= float(length)
 
-    print("\nExact match on 1st token: %5.4f | Exact match on 2nd token: %5.4f\n" % (
-        em_1, em_2))
-
-    return em_score
+    return em_score, em_1, em_2

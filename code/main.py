@@ -48,17 +48,23 @@ with tf.Session() as sess:
     graph.init_model(sess)
 
     scores = []
-    best_em = 0
+
+    scores.append(evaluate_model(graph, sess, val_data))
+    print "epoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f" % (
+        0, scores[-1][0], scores[-1][1], scores[-1][2]
+    )
+
+    best_em = scores[-1][0]
 
     for epoch in range(config.num_epochs):
 
         graph.run_epoch(train_data, epoch, sess, max_batch_epochs=-1)
 
         scores.append(evaluate_model(graph, sess, val_data))
-        print "Epoch %d EM Score: %.4f" % (
-            epoch + 1, scores[-1]
+        print "epoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f" % (
+            epoch + 1, scores[-1][0], scores[-1][1], scores[-1][2]
         )
 
-        if scores[-1] >= best_em:
+        if scores[-1][0] >= best_em:
             graph.save_model(sess)
-            best_em = scores[-1]
+            best_em = scores[-1][0]
