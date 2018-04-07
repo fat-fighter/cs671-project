@@ -11,9 +11,11 @@ DynamicRNN = tf.nn.dynamic_rnn
 
 class Decoder():
 
-    def __init__(self, hidden_size, encoded_size):
+    def __init__(self, hidden_size, encoded_size, n_clusters):
         self.hidden_size = hidden_size
         self.encoded_size = encoded_size
+
+        self.n_clusters = n_clusters
 
     def match_lstm(self, vectors, lengths):
         with tf.variable_scope("match_lstm"):
@@ -77,18 +79,31 @@ class Decoder():
                 memory_sequence_length=passages_length
             )
 
-            cell_answer_ptr = LSTMCell(
-                self.hidden_size,
-                state_is_tuple=True
-            )
-            answer_ptr_attender = AttentionWrapper(
-                cell_answer_ptr,
-                attention_mechanism_answer_ptr,
-                cell_input_fn=input_function
-            )
+            cell_answer_ptrs = []
+            answer_ptr_attenders = []
 
-            logits, _ = tf.nn.static_rnn(
-                answer_ptr_attender, labels, dtype=tf.float32
+            for _k in range(self.n_clusters):
+                cell_answer_ptrs.append(LSTMCell(
+                    self.hidden_size,
+                    state_is_tuple=True,
+                    name="answer_ptr_cell_" + str(_k)
+                ))
+
+                answer_ptr_attenders.append(AttentionWrapper(
+                    cell_answer_ptrs[-1],
+                    attention_mechanism_answer_ptr,
+                    cell_input_fn=input_function,
+                    name="answer_ptr_attn_wrapper_" + str(_k)
+                ))
+
+            def get_logits(k):
+                return tf.nn.static_rnn(
+                    answer_ptr_attenders[k], labels, dtype=tf.float32
+                )[0]
+
+            logits = tf.stack(
+                [get_logits(_k) for _k in range(self.n_clusters)],
+                axis=0
             )
 
         return logits

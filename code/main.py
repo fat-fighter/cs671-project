@@ -19,7 +19,6 @@ words_embedding = np.load(config.embed_path)["glove"]
 
 
 with tf.Session() as sess:
-    scores = []
 
     train_data = squad_dataset(
         config.questions_train,
@@ -48,11 +47,13 @@ with tf.Session() as sess:
 
     tf.global_variables_initializer().run(session=sess)
 
-    for epoch in range(config.num_epochs):
+    scores = []
+
+    for epoch in range(config.num_epochs)[:1]:
+
         graph.run_epoch(train_data, epoch, sess, max_batch_epochs=-1)
 
-        # scores[-1].append(evaluate_model(graph, sess, val_data))
-        # print "\tcluster: %d, epoch: %d, em: %.3f\n" % (
-        #     cluster, epoch +
-        #     1, float(scores[-1][-1]) / float(val_data.__len__())
-        # )
+        scores.append(evaluate_model(graph, sess, val_data))
+        print "Epoch %d EM Score: %.4f" % (
+            epoch + 1, scores[-1] / float(len(val_data))
+        )

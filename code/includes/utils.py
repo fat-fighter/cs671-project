@@ -26,8 +26,8 @@ class squad_dataset(object):
         label_file_iter = self.__iter_file(self.label_file)
 
         batch = []
-        for question, context, answer in zip(question_file_iter, context_file_iter, answer_file_iter, label_file_iter):
-            batch.append((question, context, answer))
+        for question, context, answer, label in zip(question_file_iter, context_file_iter, answer_file_iter, label_file_iter):
+            batch.append((question, context, answer, label))
             if len(batch) == self.batch_size:
                 yield np.array(batch)
                 batch = []

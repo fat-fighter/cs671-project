@@ -5,18 +5,25 @@ from includes.utils import squad_dataset, pad_sequences
 
 
 def test(graph, session, valid):
-    q, c, a = valid
+    q, c, a, l = valid
+
+    labels = np.zeros(
+        (len(l), config.n_clusters), dtype=np.float32
+    )
+    for i, _l in enumerate(l):
+        labels[i, _l] = 1
 
     # at test time we do not perform dropout.
     padded_questions, questions_length = pad_sequences(q, 0)
     padded_passages, passages_length = pad_sequences(c, 0)
 
     input_feed = {
-        graph.question_ids: np.array(padded_questions),
-        graph.context_ids: np.array(padded_passages),
+        graph.questions_ids: np.array(padded_questions),
+        graph.contexts_ids: np.array(padded_passages),
         graph.questions_length: np.array(questions_length),
-        graph.passages_length: np.array(passages_length),
-        graph.labels: np.array(a),
+        graph.contexts_length: np.array(passages_length),
+        graph.answers: np.array(a),
+        graph.labels: labels,
         graph.dropout: config.train_dropout_val
     }
 
@@ -29,6 +36,8 @@ def test(graph, session, valid):
 
 def get_answers(graph, session, dataset):
     yp, yp2 = test(graph, session, dataset)
+
+    print "Generated Logits"
 
     def func(y1, y2):
         max_ans = -999999
@@ -59,10 +68,13 @@ def get_answers(graph, session, dataset):
 
 def evaluate_model(graph, session, dataset):
 
-    q, c, a = zip(*[_row[0] for _row in dataset])
+    q, c, a, l = zip(*[_row[0] for _row in dataset])
 
-    sample = len(dataset)
-    a_s, a_o = get_answers(graph, session, [q, c, a])
+    sample = len(q)
+    a_s, a_o = get_answers(graph, session, [q, c, a, l])
+
+    print "Generated Answers"
+
     answers = np.hstack(
         [a_s.reshape([sample, -1]), a_o.reshape([sample, -1])])
     gold_answers = np.array([a[0][2] for a in dataset])
@@ -85,4 +97,5 @@ def evaluate_model(graph, session, dataset):
     print("\nExact match on 1st token: %5.4f | Exact match on 2nd token: %5.4f\n" % (
         em_1, em_2))
 
+    print em_score, type(em_score)
     return em_score
