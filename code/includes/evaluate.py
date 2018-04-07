@@ -66,30 +66,36 @@ def get_answers(graph, sess, dataset):
 
 def evaluate_model(graph, sess, dataset):
 
-    q, c, a, l = zip(*[_row[0] for _row in dataset])
-
-    sample = len(q)
-    a_s, a_o = get_answers(graph, sess, [q, c, a, l])
-
-    answers = np.hstack(
-        [a_s.reshape([sample, -1]), a_o.reshape([sample, -1])])
-    gold_answers = np.array([a[0][2] for a in dataset])
-
     em_score = 0
+    length = 0
     em_1 = 0
     em_2 = 0
-    for i in xrange(sample):
-        gold_s, gold_e = gold_answers[i]
-        s, e = answers[i]
-        if (s == gold_s):
-            em_1 += 1.0
-        if (e == gold_e):
-            em_2 += 1.0
-        if (s == gold_s and e == gold_e):
-            em_score += 1.0
 
-    em_1 /= float(len(answers))
-    em_2 /= float(len(answers))
+    for batch in dataset:
+        q, c, a, l = zip(*batch)
+
+        sample = len(q)
+        a_s, a_o = get_answers(graph, sess, [q, c, a, l])
+
+        answers = np.hstack(
+            [a_s.reshape([sample, -1]), a_o.reshape([sample, -1])]
+        )
+        gold_answers = np.array([_a for _a in a])
+
+        match = (answers == gold_answers)
+        _em_1, _em_2 = np.sum(match, axis=0)
+
+        em_1 += _em_1
+        em_2 += _em_2
+
+        em_score += np.sum(np.sum(match, axis=0) >= 1)
+        length += sample
+
+    em_1 /= float(length)
+    em_2 /= float(length)
+
+    em_score /= float(length)
+
     print("\nExact match on 1st token: %5.4f | Exact match on 2nd token: %5.4f\n" % (
         em_1, em_2))
 

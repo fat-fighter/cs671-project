@@ -19,8 +19,8 @@ class Decoder():
 
     def match_lstm(self, vectors, lengths):
         with tf.variable_scope("match_lstm"):
-            questions, passages = vectors
-            questions_length, passages_length = lengths
+            questions, contexts = vectors
+            questions_length, contexts_length = lengths
 
             def attention_function(x, state):
                 return tf.concat([x, state], axis=-1)
@@ -43,18 +43,18 @@ class Decoder():
             )
 
             output_attender_fw, _ = DynamicRNN(
-                lstm_attender, passages, dtype=tf.float32
+                lstm_attender, contexts, dtype=tf.float32
             )
 
             reverse_encoded_context = tf.reverse_sequence(
-                passages, passages_length, batch_axis=0, seq_axis=1
+                contexts, contexts_length, batch_axis=0, seq_axis=1
             )
 
             output_attender_bw, _ = DynamicRNN(
                 lstm_attender, reverse_encoded_context, dtype=tf.float32, scope="rnn"
             )
             output_attender_bw = tf.reverse_sequence(
-                output_attender_bw, passages_length, batch_axis=0, seq_axis=1
+                output_attender_bw, contexts_length, batch_axis=0, seq_axis=1
             )
 
             output_attender = tf.concat(
@@ -65,7 +65,7 @@ class Decoder():
 
     def answer_pointer(self, output_attender, lengths, labels):
         with tf.variable_scope("answer_pointer"):
-            _, passages_length = lengths
+            _, contexts_length = lengths
             labels = tf.unstack(labels, axis=1)
 
             def input_function(curr_input, context):
@@ -76,25 +76,26 @@ class Decoder():
             attention_mechanism_answer_ptr = BahdanauAttention(
                 query_depth_answer_ptr,
                 output_attender,
-                memory_sequence_length=passages_length
+                memory_sequence_length=contexts_length
             )
 
             cell_answer_ptrs = []
             answer_ptr_attenders = []
 
             for _k in range(self.n_clusters):
-                cell_answer_ptrs.append(LSTMCell(
-                    self.hidden_size,
-                    state_is_tuple=True,
-                    name="answer_ptr_cell_" + str(_k)
-                ))
+                with tf.variable_scope("answer_ptr_" + str(_k)):
+                    cell_answer_ptrs.append(LSTMCell(
+                        self.hidden_size,
+                        state_is_tuple=True,
+                        name="answer_ptr_cell_" + str(_k)
+                    ))
 
-                answer_ptr_attenders.append(AttentionWrapper(
-                    cell_answer_ptrs[-1],
-                    attention_mechanism_answer_ptr,
-                    cell_input_fn=input_function,
-                    name="answer_ptr_attn_wrapper_" + str(_k)
-                ))
+                    answer_ptr_attenders.append(AttentionWrapper(
+                        cell_answer_ptrs[-1],
+                        attention_mechanism_answer_ptr,
+                        cell_input_fn=input_function,
+                        name="answer_ptr_wrapper_" + str(_k)
+                    ))
 
             def get_logits(k):
                 return tf.nn.static_rnn(

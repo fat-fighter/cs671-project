@@ -35,7 +35,7 @@ with tf.Session() as sess:
         config.answers_val,
         config.labels_val,
         root=root_dir + "/",
-        batch_size=1
+        batch_size=500
     )
 
     graph = Graph(
@@ -56,7 +56,7 @@ with tf.Session() as sess:
 
         scores.append(evaluate_model(graph, sess, val_data))
         print "Epoch %d EM Score: %.4f" % (
-            epoch + 1, scores[-1] / float(len(val_data))
+            epoch + 1, scores[-1]
         )
 
         if scores[-1] >= best_em:
