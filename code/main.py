@@ -45,11 +45,12 @@ with tf.Session() as sess:
         config.n_clusters
     )
 
-    tf.global_variables_initializer().run(session=sess)
+    graph.init_model(sess)
 
     scores = []
+    best_em = 0
 
-    for epoch in range(config.num_epochs)[:1]:
+    for epoch in range(config.num_epochs):
 
         graph.run_epoch(train_data, epoch, sess, max_batch_epochs=-1)
 
@@ -57,3 +58,7 @@ with tf.Session() as sess:
         print "Epoch %d EM Score: %.4f" % (
             epoch + 1, scores[-1] / float(len(val_data))
         )
+
+        if scores[-1] >= best_em:
+            graph.save_model(sess)
+            best_em = scores[-1]

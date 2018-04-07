@@ -4,7 +4,7 @@ from includes import config
 from includes.utils import squad_dataset, pad_sequences
 
 
-def test(graph, session, valid):
+def test(graph, sess, valid):
     q, c, a, l = valid
 
     labels = np.zeros(
@@ -29,15 +29,13 @@ def test(graph, session, valid):
 
     output_feed = [graph.logits]
 
-    outputs = session.run(output_feed, input_feed)
+    outputs = sess.run(output_feed, input_feed)
 
     return outputs[0][0], outputs[0][1]
 
 
-def get_answers(graph, session, dataset):
-    yp, yp2 = test(graph, session, dataset)
-
-    print "Generated Logits"
+def get_answers(graph, sess, dataset):
+    yp, yp2 = test(graph, sess, dataset)
 
     def func(y1, y2):
         max_ans = -999999
@@ -66,14 +64,12 @@ def get_answers(graph, session, dataset):
     return (np.array(a_s), np.array(a_e))
 
 
-def evaluate_model(graph, session, dataset):
+def evaluate_model(graph, sess, dataset):
 
     q, c, a, l = zip(*[_row[0] for _row in dataset])
 
     sample = len(q)
-    a_s, a_o = get_answers(graph, session, [q, c, a, l])
-
-    print "Generated Answers"
+    a_s, a_o = get_answers(graph, sess, [q, c, a, l])
 
     answers = np.hstack(
         [a_s.reshape([sample, -1]), a_o.reshape([sample, -1])])
@@ -97,5 +93,4 @@ def evaluate_model(graph, session, dataset):
     print("\nExact match on 1st token: %5.4f | Exact match on 2nd token: %5.4f\n" % (
         em_1, em_2))
 
-    print em_score, type(em_score)
     return em_score

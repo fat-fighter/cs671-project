@@ -32,6 +32,9 @@ class Graph():
         self.init_variables()
         self.init_nodes()
 
+        self.saver = tf.train.Saver()
+        self.init = tf.global_variables_initializer()
+
     def init_placeholders(self):
         self.questions_ids = tf.placeholder(
             tf.int32, shape=[None, None]
@@ -117,12 +120,25 @@ class Graph():
             )
         )
 
-        adam_optimizer = tf.train.AdamOptimizer(learning_rate=0.0005)
-        self.train_step = adam_optimizer.minimize(self.loss)
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=0.0005)
+        self.train_step = self.optimizer.minimize(self.loss)
 
         # grads, vars = zip(*adam_optimizer.compute_gradients(self.loss))
         # self.gradients = zip(grads, vars)
         # self.train_step = adam_optimizer.apply_gradients(self.gradients)
+
+    def init_model(self, sess):
+        ckpt = tf.train.get_checkpoint_state(config.train_dir)
+        path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
+
+        if ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path) or tf.gfile.Exists(path)):
+            print "Initializing model from %s" % ckpt.model_checkpoint_path
+            self.saver.restore(sess, ckpt.model_checkpoint_path)
+        else:
+            sess.run(self.init)
+
+    def save_model(self, sess):
+        self.saver.save(sess, "%s/trained_model.chk" % config.train_dir)
 
     def run_epoch(self, train_dataset, epoch, sess, max_batch_epochs=-1):
         print_dict = {"loss": "inf"}
@@ -131,7 +147,7 @@ class Graph():
             pbar.set_description("Epoch %d" % (epoch + 1))
             for i, batch in enumerate(pbar):
                 if i == max_batch_epochs:
-                    return
+                    break
 
                 questions_padded, questions_length = pad_sequences(
                     np.array(batch[:, 0]), 0

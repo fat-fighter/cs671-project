@@ -16,7 +16,7 @@ n_clusters = 5 if clustering == "context" else 6
 
 # TRAINING
 
-num_epochs = 5
+num_epochs = 15
 batch_size = 32
 
 max_gradient_norm = -1
@@ -25,6 +25,7 @@ embedding_size = 300
 hidden_state_size = 150
 
 data_dir = "data/squad/"
+train_dir = "model"
 
 vocab_path = data_dir + "/vocab.dat"
 embed_path = data_dir + "/glove.npz"
