@@ -10,8 +10,11 @@ def test(graph, sess, valid):
     labels = np.zeros(
         (len(l), config.n_clusters), dtype=np.float32
     )
-    for i, _l in enumerate(l):
-        labels[i, _l] = 1
+    if config.clustering:
+        for i, _l in enumerate(l):
+            labels[i, _l] = 1
+    else:
+        labels[:, 0] = 1
 
     padded_questions, questions_length = pad_sequences(q, 0)
     padded_passages, passages_length = pad_sequences(c, 0)

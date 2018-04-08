@@ -28,8 +28,10 @@ embedding_size = 300
 
 encoding_size = 64
 
+clustering = True
+
 data_dir = "data/squad/"
-train_dir = "model/clustered-mlstm"
+train_dir = "model/k-match-lstm"
 
 if not os.path.exists(train_dir):
     os.makedirs(train_dir)

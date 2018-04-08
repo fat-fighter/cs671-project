@@ -2,8 +2,6 @@ import tensorflow as tf
 
 from mlstm import MatchLSTMCell
 LSTMCell = tf.contrib.rnn.BasicLSTMCell
-
-DynamicRNN = tf.nn.dynamic_rnn
 DynamicBiRNN = tf.nn.bidirectional_dynamic_rnn
 
 

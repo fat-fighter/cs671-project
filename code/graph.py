@@ -146,12 +146,13 @@ class Graph():
         path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
 
         if ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path) or tf.gfile.Exists(path)):
-            print "Initializing model from %s" % ckpt.model_checkpoint_path
+            print "\nInitializing model from %s ... \n" % ckpt.model_checkpoint_path
             self.saver.restore(sess, ckpt.model_checkpoint_path)
 
             return True
 
         else:
+            print "\nCreating model with fresh parameters ..."
             sess.run(self.init)
             return False
 
@@ -177,8 +178,11 @@ class Graph():
                 labels = np.zeros(
                     (len(batch), config.n_clusters), dtype=np.float32
                 )
-                for j, el in enumerate(batch):
-                    labels[j, el[3]] = 1
+                if config.clustering:
+                    for j, el in enumerate(batch):
+                        labels[j, el[3]] = 1
+                else:
+                    labels[:, 0] = 1
 
                 loss, _ = sess.run(
                     [self.loss, self.train_step],
