@@ -45,19 +45,27 @@ class squad_dataset(object):
         return self.length
 
 
-def pad_sequences(sequences, token):
-    max_length = max([len(x) for x in sequences])
-
+def pad_sequences(sequences, max_length):
     sequences_padded, sequences_length = [], []
 
     for sequence in sequences:
+        sequences_length.append(min(len(sequence), max_length))
+
         sequence = list(sequence)
-        sequence = sequence[:max_length] + [token] * \
+        sequence = sequence[:max_length] + [0] * \
             max(max_length - len(sequence), 0)
-        sequences_padded += [sequence]
-        sequences_length += [min(len(sequence), max_length)]
+        sequences_padded.append(sequence)
 
     return np.array(sequences_padded), np.array(sequences_length)
+
+
+def masks(lengths, max_length):
+    masks = []
+    for length in lengths:
+        masks.append(
+            [1.0] * length + [0.0] * max(max_length - length, 0)
+        )
+    return np.array(masks)
 
 
 def is_outlier(points, thresh=3.5):

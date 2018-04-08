@@ -13,7 +13,6 @@ def test(graph, sess, valid):
     for i, _l in enumerate(l):
         labels[i, _l] = 1
 
-    # at test time we do not perform dropout.
     padded_questions, questions_length = pad_sequences(q, 0)
     padded_passages, passages_length = pad_sequences(c, 0)
 
@@ -24,7 +23,7 @@ def test(graph, sess, valid):
         graph.contexts_length: np.array(passages_length),
         graph.answers: np.array(a),
         graph.labels: labels,
-        graph.dropout: config.train_dropout_val
+        graph.dropout: 1
     }
 
     output_feed = [graph.logits]

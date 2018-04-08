@@ -2,7 +2,7 @@ import numpy as np
 
 import tensorflow as tf
 
-from attention_wrapper import BahdanauAttention, AttentionWrapper
+from attention_wrapper import BahdanauAttention, LuongAttention, AttentionWrapper
 
 
 LSTMCell = tf.contrib.rnn.BasicLSTMCell
@@ -11,106 +11,122 @@ DynamicRNN = tf.nn.dynamic_rnn
 
 class Decoder():
 
-    def __init__(self, hidden_size, encoded_size, n_clusters):
-        self.hidden_size = hidden_size
+    def __init__(self, encoded_size, n_clusters):
         self.encoded_size = encoded_size
 
         self.n_clusters = n_clusters
 
-    def match_lstm(self, vectors, lengths):
-        with tf.variable_scope("match_lstm"):
-            questions, contexts = vectors
-            questions_length, contexts_length = lengths
+        self.initializer = tf.contrib.layers.xavier_initializer()
 
-            def attention_function(x, state):
-                return tf.concat([x, state], axis=-1)
+    def decode(self, output_attender, contexts_mask):
+        with tf.variable_scope("decoder"):
 
-            attention_mechanism_match_lstm = BahdanauAttention(
-                self.encoded_size,
-                questions,
-                memory_sequence_length=questions_length
-            )
-
-            cell = LSTMCell(
-                self.hidden_size,
-                state_is_tuple=True
-            )
-            lstm_attender = AttentionWrapper(
-                cell,
-                attention_mechanism_match_lstm,
-                output_attention=False,
-                attention_input_fn=attention_function
-            )
-
-            output_attender_fw, _ = DynamicRNN(
-                lstm_attender, contexts, dtype=tf.float32
-            )
-
-            reverse_encoded_context = tf.reverse_sequence(
-                contexts, contexts_length, batch_axis=0, seq_axis=1
-            )
-
-            output_attender_bw, _ = DynamicRNN(
-                lstm_attender, reverse_encoded_context, dtype=tf.float32, scope="rnn"
-            )
-            output_attender_bw = tf.reverse_sequence(
-                output_attender_bw, contexts_length, batch_axis=0, seq_axis=1
-            )
-
-            output_attender = tf.concat(
-                [output_attender_fw, output_attender_bw], axis=-1
-            )
-
-        return output_attender
-
-    def answer_pointer(self, output_attender, lengths, labels):
-        with tf.variable_scope("answer_pointer"):
-            _, contexts_length = lengths
-            labels = tf.unstack(labels, axis=1)
-
-            def input_function(curr_input, context):
-                return context
-
-            query_depth_answer_ptr = 2 * self.hidden_size
-
-            attention_mechanism_answer_ptr = BahdanauAttention(
-                query_depth_answer_ptr,
-                output_attender,
-                memory_sequence_length=contexts_length
-            )
-
-            cell_answer_ptrs = []
-            answer_ptr_attenders = []
-
-            for _k in range(self.n_clusters):
-                with tf.variable_scope("answer_ptr_" + str(_k)):
-                    cell_answer_ptrs.append(LSTMCell(
-                        self.hidden_size,
-                        state_is_tuple=True,
-                        name="answer_ptr_cell_" + str(_k)
-                    ))
-
-                    answer_ptr_attenders.append(AttentionWrapper(
-                        cell_answer_ptrs[-1],
-                        attention_mechanism_answer_ptr,
-                        cell_input_fn=input_function,
-                        name="answer_ptr_wrapper_" + str(_k)
-                    ))
+            output_attender_shape = tf.shape(output_attender)
 
             def get_logits(k):
-                return tf.nn.static_rnn(
-                    answer_ptr_attenders[k], labels, dtype=tf.float32
-                )[0]
+
+                Wr = tf.get_variable('Wr' + str(k), [4 * self.encoded_size, 2 * self.encoded_size], dtype=tf.float32,
+                                     initializer=self.initializer
+                                     )
+                Wh = tf.get_variable('Wh' + str(k), [4 * self.encoded_size, 2 * self.encoded_size], dtype=tf.float32,
+                                     initializer=self.initializer
+                                     )
+                Wf = tf.get_variable('Wf' + str(k), [2 * self.encoded_size, 1], dtype=tf.float32,
+                                     initializer=self.initializer
+                                     )
+                br = tf.get_variable('br' + str(k), [2 * self.encoded_size], dtype=tf.float32,
+                                     initializer=tf.zeros_initializer())
+                bf = tf.get_variable('bf' + str(k), [1, ], dtype=tf.float32,
+                                     initializer=tf.zeros_initializer())
+
+                wr_e = tf.tile(
+                    tf.expand_dims(Wr, axis=[0]),
+                    [output_attender_shape[0], 1, 1]
+                )
+                s_f = tf.tanh(tf.matmul(output_attender, wr_e) + br)
+
+                # f = tf.nn.dropout(f, keep_prob=keep_prob)
+
+                wf_e = tf.tile(tf.expand_dims(Wf, axis=[0]), [
+                    output_attender_shape[0], 1, 1])
+
+                with tf.name_scope('starter_score'):
+                    s_score = tf.squeeze(tf.matmul(s_f, wf_e) + bf, axis=[2])
+
+                with tf.name_scope('starter_prob'):
+                    s_prob = tf.nn.softmax(s_score)
+                    s_prob = tf.multiply(s_prob, contexts_mask)
+
+                Hr_attend = tf.reduce_sum(tf.multiply(
+                    output_attender, tf.expand_dims(s_prob, axis=[2])), axis=1)
+                e_f = tf.tanh(tf.matmul(output_attender, wr_e) +
+                              tf.expand_dims(
+                                  tf.matmul(Hr_attend, Wh), axis=[1])
+                              + br)
+
+                with tf.name_scope('end_score'):
+                    e_score = tf.squeeze(tf.matmul(e_f, wf_e) + bf, axis=[2])
+
+                with tf.name_scope('end_prob'):
+                    e_prob = tf.nn.softmax(e_score)
+                    e_prob = tf.multiply(e_prob, contexts_mask)
+
+                return s_score, e_score
 
             logits = tf.stack(
                 [get_logits(_k) for _k in range(self.n_clusters)],
                 axis=0
             )
 
-        return logits
+            return logits
 
-    def predict(self, vectors, lengths, questions_representation, labels):
-        output_attender = self.match_lstm(vectors, lengths)
-        logits = self.answer_pointer(output_attender, lengths, labels)
+        #     _, contexts_length = lengths
+        #     labels = tf.unstack(labels, axis=1)
 
-        return logits
+        #     def input_function(curr_input, context):
+        #         return context
+
+        #     query_depth_answer_ptr = 2 * self.hidden_size
+
+        #     if self.attention == "luong":
+        #         attention_mechanism_answer_ptr = LuongAttention(
+        #             query_depth_answer_ptr,
+        #             output_attender,
+        #             memory_sequence_length=contexts_length
+        #         )
+        #     else:
+        #         attention_mechanism_answer_ptr = BahdanauAttention(
+        #             query_depth_answer_ptr,
+        #             output_attender,
+        #             memory_sequence_length=contexts_length
+        #         )
+
+        #     cell_answer_ptrs = []
+        #     answer_ptr_attenders = []
+
+        #     for _k in range(self.n_clusters):
+        #         with tf.variable_scope("answer_ptr_" + str(_k)):
+        #             cell_answer_ptrs.append(LSTMCell(
+        #                 self.hidden_size,
+        #                 state_is_tuple=True,
+        #                 name="answer_ptr_cell_" + str(_k)
+        #             ))
+
+        #             answer_ptr_attenders.append(AttentionWrapper(
+        #                 cell_answer_ptrs[-1],
+        #                 attention_mechanism_answer_ptr,
+        #                 cell_input_fn=input_function,
+        #                 name="answer_ptr_wrapper_" + str(_k)
+        #             ))
+
+        #     def get_logits(k):
+        #         return tf.nn.static_rnn(
+        #             answer_ptr_attenders[k], labels, dtype=tf.float32=tf.float32
+        #         )[0]
+
+        #     logits = tf.stack(
+        #         [get_logits(_k) for _k in range(self.n_clusters)],
+        #         axis=0
+        #     )
+
+        # return logits

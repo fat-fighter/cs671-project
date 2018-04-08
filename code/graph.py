@@ -1,5 +1,5 @@
 from includes import config
-from includes.utils import pad_sequences
+from includes.utils import pad_sequences, masks
 
 from encoder import Encoder
 from decoder import Decoder
@@ -11,16 +11,16 @@ import tensorflow as tf
 
 CrossEntropy = tf.nn.sparse_softmax_cross_entropy_with_logits
 
+L2Regularizer = tf.contrib.layers.l2_regularizer
+
 
 class Graph():
-    def __init__(self, embeddings, encoder, decoder, n_clusters):
+    def __init__(self, embeddings, encoder, decoder):
 
         self.encoder = encoder
         self.decoder = decoder
 
         self.embeddings = embeddings
-
-        self.n_clusters = n_clusters
 
         self.init_placeholders()
         self.init_variables()
@@ -31,10 +31,10 @@ class Graph():
 
     def init_placeholders(self):
         self.questions_ids = tf.placeholder(
-            tf.int32, shape=[None, None]
+            tf.int32, shape=[None, config.max_question_length]
         )
         self.contexts_ids = tf.placeholder(
-            tf.int32, shape=[None, None]
+            tf.int32, shape=[None, config.max_context_length]
         )
 
         self.questions_length = tf.placeholder(
@@ -44,12 +44,19 @@ class Graph():
             tf.int32, shape=[None]
         )
 
+        self.questions_mask = tf.placeholder(
+            tf.float32, shape=[None, config.max_question_length]
+        )
+        self.contexts_mask = tf.placeholder(
+            tf.float32, shape=[None, config.max_context_length]
+        )
+
         self.answers = tf.placeholder(
             tf.int32, shape=[None, 2]
         )
 
         self.labels = tf.placeholder(
-            tf.float32, shape=[None, self.n_clusters]
+            tf.float32, shape=[None, config.n_clusters]
         )
 
         self.dropout = tf.placeholder(
@@ -73,53 +80,66 @@ class Graph():
         self.contexts = tf.nn.dropout(contexts_embedding, self.dropout)
 
     def init_nodes(self):
-        self.encoded_questions, \
-            self.questions_representation, \
-            self.encoded_contexts, \
-            self.contexts_representation = self.encoder.encode(
-                (self.questions, self.contexts),
-                (self.questions_length, self.contexts_length)
-            )
+        self.output_attender = self.encoder.encode(
+            (self.questions, self.contexts),
+            (self.questions_length, self.contexts_length),
+            self.questions_mask
+        )
 
-        self.predictions = self.decoder.predict(
-            [self.encoded_questions, self.encoded_contexts],
-            [self.questions_length, self.contexts_length],
-            self.questions_representation,
-            self.answers
+        self.logits = self.decoder.decode(
+            self.output_attender,
+            self.contexts_mask
         )
 
         labels_shape = tf.shape(self.labels)
-        predictions_shape = tf.shape(self.predictions)
+        logits_shape = tf.shape(self.logits)
 
         self.labels_broadcasted = tf.tile(
             tf.reshape(
                 tf.transpose(self.labels), [6, 1, labels_shape[0], 1]
             ), tf.stack(
-                [1, 2, 1, predictions_shape[3]]
+                [1, 2, 1, logits_shape[3]]
             )
         )
 
-        self.logits = tf.reduce_sum(
+        self.predictions = tf.reduce_sum(
             tf.multiply(
-                self.labels_broadcasted, self.predictions
+                self.labels_broadcasted, self.logits
             ), axis=0
         )
 
-        self.loss = tf.reduce_mean(
-            CrossEntropy(
-                logits=self.logits[0], labels=self.answers[:, 0]
-            ) +
-            CrossEntropy(
-                logits=self.logits[1], labels=self.answers[:, 1]
+        with tf.variable_scope("loss"):
+            # reg_variables = tf.get_collection(
+            #     tf.GraphKeys.REGULARIZATION_LOSSES
+            # )
+            # regularization_term = tf.contrib.layers.apply_regularization(
+            #     L2Regularizer(config.regularization_constant), reg_variables
+            # )
+
+            self.loss = tf.reduce_mean(
+                CrossEntropy(
+                    logits=self.predictions[0], labels=self.answers[:, 0]
+                ) +
+                CrossEntropy(
+                    logits=self.predictions[1], labels=self.answers[:, 1]
+                )
             )
+
+        learning_rate = tf.train.exponential_decay(
+            config.learning_rate,
+            0,
+            config.decay_steps,
+            config.decay_rate,
+            staircase=True
         )
+        self.optimizer = tf.train.AdamOptimizer(learning_rate)
 
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=0.0005)
-        self.train_step = self.optimizer.minimize(self.loss)
-
-        # grads, vars = zip(*adam_optimizer.compute_gradients(self.loss))
-        # self.gradients = zip(grads, vars)
-        # self.train_step = adam_optimizer.apply_gradients(self.gradients)
+        gradients = self.optimizer.compute_gradients(self.loss)
+        capped_gvs = [
+            (tf.clip_by_value(grad, -10.0, 10.0), var)
+            for grad, var in gradients
+        ]
+        self.train_step = self.optimizer.apply_gradients(capped_gvs)
 
     def init_model(self, sess):
         ckpt = tf.train.get_checkpoint_state(config.train_dir)
@@ -128,8 +148,12 @@ class Graph():
         if ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path) or tf.gfile.Exists(path)):
             print "Initializing model from %s" % ckpt.model_checkpoint_path
             self.saver.restore(sess, ckpt.model_checkpoint_path)
+
+            return True
+
         else:
             sess.run(self.init)
+            return False
 
     def save_model(self, sess):
         self.saver.save(sess, "%s/trained_model.chk" % config.train_dir)
@@ -138,20 +162,20 @@ class Graph():
         print_dict = {"loss": "inf"}
 
         with tqdm(train_dataset, postfix=print_dict) as pbar:
-            pbar.set_description("Epoch %d" % (epoch + 1))
+            pbar.set_description("epoch: %d" % (epoch + 1))
             for i, batch in enumerate(pbar):
                 if i == max_batch_epochs:
                     break
 
                 questions_padded, questions_length = pad_sequences(
-                    np.array(batch[:, 0]), 0
+                    np.array(batch[:, 0]), config.max_question_length
                 )
                 contexts_padded, contexts_length = pad_sequences(
-                    np.array(batch[:, 1]), 0
+                    np.array(batch[:, 1]), config.max_context_length
                 )
 
                 labels = np.zeros(
-                    (len(batch), self.n_clusters), dtype=np.float32
+                    (len(batch), config.n_clusters), dtype=np.float32
                 )
                 for j, el in enumerate(batch):
                     labels[j, el[3]] = 1
@@ -161,12 +185,15 @@ class Graph():
                     feed_dict={
                         self.questions_ids: np.array(questions_padded),
                         self.questions_length: np.array(questions_length),
+                        self.questions_mask: masks(questions_length, config.max_question_length),
                         self.contexts_ids: np.array(contexts_padded),
                         self.contexts_length: np.array(contexts_length),
+                        self.contexts_mask: masks(contexts_length, config.max_context_length),
                         self.answers: np.array([np.array(el[2]) for el in batch]),
                         self.labels: labels,
-                        self.dropout: config.train_dropout_val
+                        self.dropout: config.dropout_keep_prob
                     }
                 )
+
                 print_dict["loss"] = "%.3f" % loss
                 pbar.set_postfix(print_dict)
