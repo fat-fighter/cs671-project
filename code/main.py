@@ -50,7 +50,7 @@ with tf.Session() as sess:
     scores = []
 
     scores.append(evaluate_model(graph, sess, val_data))
-    print "epoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f" % (
+    print "\nepoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f\n" % (
         0, scores[-1][0], scores[-1][1], scores[-1][2]
     )
 
@@ -61,7 +61,7 @@ with tf.Session() as sess:
         graph.run_epoch(train_data, epoch, sess, max_batch_epochs=-1)
 
         scores.append(evaluate_model(graph, sess, val_data))
-        print "epoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f" % (
+        print "\nepoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f\n" % (
             epoch + 1, scores[-1][0], scores[-1][1], scores[-1][2]
         )
 

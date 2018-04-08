@@ -13,16 +13,10 @@ CrossEntropy = tf.nn.sparse_softmax_cross_entropy_with_logits
 
 
 class Graph():
-    def __init__(self, encoded_size, match_encoded_size, embeddings, n_clusters):
-        self.encoded_size = encoded_size
-        self.match_encoded_size = match_encoded_size
+    def __init__(self, embeddings, encoder, decoder, n_clusters):
 
-        self.encoder = Encoder(self.encoded_size)
-        self.decoder = Decoder(
-            self.match_encoded_size,
-            self.encoded_size,
-            n_clusters
-        )
+        self.encoder = encoder
+        self.decoder = decoder
 
         self.embeddings = embeddings
 
@@ -159,8 +153,8 @@ class Graph():
                 labels = np.zeros(
                     (len(batch), self.n_clusters), dtype=np.float32
                 )
-                for i, el in enumerate(batch):
-                    labels[i, el[3]] = 1
+                for j, el in enumerate(batch):
+                    labels[j, el[3]] = 1
 
                 loss, _ = sess.run(
                     [self.loss, self.train_step],

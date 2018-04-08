@@ -31,7 +31,7 @@ class squad_dataset(object):
             if len(batch) == self.batch_size:
                 yield np.array(batch)
                 batch = []
-        yield batch
+        yield np.array(batch)
 
     def __len__(self):
         """

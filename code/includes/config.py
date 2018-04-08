@@ -16,16 +16,20 @@ n_clusters = 5 if clustering == "context" else 6
 
 # TRAINING
 
+bi_directional_encoding = True
+
 num_epochs = 15
 batch_size = 32
 
 max_gradient_norm = -1
 
 embedding_size = 300
-hidden_state_size = 150
+encoding_size = 100 if bi_directional_encoding else 150
+match_encoding_size = 150
 
 data_dir = "data/squad/"
-train_dir = "model"
+train_dir = "model/" + \
+    ("bidirectional-encoding" if bi_directional_encoding else "basic-encoding")
 
 vocab_path = data_dir + "/vocab.dat"
 embed_path = data_dir + "/glove.npz"
