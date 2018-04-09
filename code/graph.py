@@ -109,12 +109,12 @@ class Graph():
         )
 
         with tf.variable_scope("loss"):
-            # reg_variables = tf.get_collection(
-            #     tf.GraphKeys.REGULARIZATION_LOSSES
-            # )
-            # regularization_term = tf.contrib.layers.apply_regularization(
-            #     L2Regularizer(config.regularization_constant), reg_variables
-            # )
+            reg_variables = tf.get_collection(
+                tf.GraphKeys.REGULARIZATION_LOSSES
+            )
+            regularization_term = tf.contrib.layers.apply_regularization(
+                L2Regularizer(config.regularization_constant), reg_variables
+            )
 
             self.loss = tf.reduce_mean(
                 CrossEntropy(
@@ -123,7 +123,7 @@ class Graph():
                 CrossEntropy(
                     logits=self.predictions[1], labels=self.answers[:, 1]
                 )
-            )
+            ) + regularization_term
 
         learning_rate = tf.train.exponential_decay(
             config.learning_rate,
@@ -136,7 +136,7 @@ class Graph():
 
         gradients = self.optimizer.compute_gradients(self.loss)
         clipped_gradients = [
-            (tf.clip_by_value(grad, -10.0, 10.0), var)
+            (tf.clip_by_value(grad, -config.max_gradient, config.max_gradient), var)
             for grad, var in gradients
         ]
         grad_check = tf.check_numerics(self.loss, "NaN detected")
@@ -147,9 +147,15 @@ class Graph():
         ckpt = tf.train.get_checkpoint_state(config.train_dir)
         path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
 
-        if ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path) or tf.gfile.Exists(path)):
-            print "\nInitializing model from %s ... \n" % ckpt.model_checkpoint_path
+        if config.load_model and ckpt and (
+            tf.gfile.Exists(
+                ckpt.model_checkpoint_path
+            ) or tf.gfile.Exists(path)
+        ):
+            print "\nInitializing model from %s ... " % ckpt.model_checkpoint_path
             self.saver.restore(sess, ckpt.model_checkpoint_path)
+
+            print "Initialized model\n"
 
             return True
 
@@ -201,8 +207,8 @@ class Graph():
                             self.dropout: config.dropout_keep_prob
                         }
                     )
+
+                    print_dict["loss"] = "%.3f" % loss
+                    pbar.set_postfix(print_dict)
                 except Exception as e:
                     print "NaN detected for batch: " + str(i + 1)
-
-                print_dict["loss"] = "%.3f" % loss
-                pbar.set_postfix(print_dict)

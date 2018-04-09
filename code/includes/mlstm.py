@@ -146,7 +146,7 @@ class MatchLSTMCell(tf.nn.rnn_cell.RNNCell):
                 'b_o',
                 [self._state_size],
                 dtype=tf.float32,
-                initializer=self.zero_initializer
+                initializer=tf.constant_initializer(0.0)
             )
 
             z_t = tf.nn.sigmoid(

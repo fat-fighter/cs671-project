@@ -4,6 +4,11 @@ from includes import config
 from includes.utils import pad_sequences, masks
 
 
+def softmax(x):
+    scoreMatExp = np.exp(np.asarray(x))
+    return scoreMatExp / scoreMatExp.sum(0)
+
+
 def test(graph, sess, valid):
     q, c, a, l = valid
 
@@ -43,6 +48,8 @@ def test(graph, sess, valid):
 def get_answers(graph, sess, dataset):
     yp, yp2 = test(graph, sess, dataset)
 
+    # return np.argmax(yp, axis=1), np.argmax(yp2, axis=1)
+
     def func(y1, y2):
         max_ans = -999999
         a_s, a_e = 0, 0
@@ -54,7 +61,7 @@ def get_answers(graph, sess, dataset):
 
                 curr_a_s = y1[i]
                 curr_a_e = y2[i+j]
-                if (curr_a_e+curr_a_s) > max_ans:
+                if (curr_a_e + curr_a_s) > max_ans:
                     max_ans = curr_a_e + curr_a_s
                     a_s = i
                     a_e = i+j

@@ -9,8 +9,9 @@ DynamicBiRNN = tf.nn.bidirectional_dynamic_rnn
 
 class Encoder:
 
-    def __init__(self, hidden_size):
+    def __init__(self, hidden_size, keep_prob):
         self.hidden_size = hidden_size
+        self.keep_prob = keep_prob
 
     def encode(self, vectors, lengths, questions_mask):
         questions, contexts = vectors
@@ -32,8 +33,9 @@ class Encoder:
                 sequence_length=questions_length,
                 dtype=tf.float32
             )
-            encoded_questions = tf.concat(
-                encoded_questions_tuple, axis=2
+            encoded_questions = tf.nn.dropout(tf.concat(
+                encoded_questions_tuple, axis=2),
+                keep_prob=self.keep_prob
             )
 
         with tf.variable_scope("encoder_context"):
@@ -52,8 +54,9 @@ class Encoder:
                 sequence_length=contexts_length,
                 dtype=tf.float32
             )
-            encoded_contexts = tf.concat(
-                encoded_contexts_tuple, axis=2
+            encoded_contexts = tf.nn.dropout(tf.concat(
+                encoded_contexts_tuple, axis=2),
+                keep_prob=self.keep_prob
             )
 
         with tf.variable_scope("match_encoding"):
@@ -80,6 +83,9 @@ class Encoder:
                 dtype=tf.float32
             )
 
-            output_attender = tf.concat(output_attender_tuple, axis=2)
+            output_attender = tf.nn.dropout(
+                tf.concat(output_attender_tuple, axis=2),
+                keep_prob=self.keep_prob
+            )
 
         return output_attender

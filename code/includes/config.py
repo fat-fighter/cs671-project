@@ -50,6 +50,10 @@ learning_rate = 0.001
 decay_steps = 1000
 decay_rate = 0.96
 
+max_gradient = 10.0
+
+load_model = False
+
 
 def get_paths(mode):
     questions = data_dir + "/%s.ids.questions" % mode

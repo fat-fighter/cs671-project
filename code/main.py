@@ -20,11 +20,13 @@ words_embedding = np.load(config.embed_path)["glove"]
 sess = tf.Session()
 
 encoder = Encoder(
-    config.encoding_size
+    config.encoding_size,
+    config.dropout_keep_prob
 )
 decoder = Decoder(
     config.encoding_size,
-    config.n_clusters
+    config.n_clusters,
+    config.dropout_keep_prob
 )
 
 graph = Graph(
