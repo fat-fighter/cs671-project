@@ -2,8 +2,6 @@ import numpy as np
 
 import tensorflow as tf
 
-from attention_wrapper import BahdanauAttention, LuongAttention, AttentionWrapper
-
 
 LSTMCell = tf.contrib.rnn.BasicLSTMCell
 DynamicRNN = tf.nn.dynamic_rnn

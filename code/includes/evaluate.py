@@ -1,7 +1,7 @@
 import numpy as np
 
 from includes import config
-from includes.utils import squad_dataset, pad_sequences
+from includes.utils import pad_sequences, masks
 
 
 def test(graph, sess, valid):
@@ -16,24 +16,28 @@ def test(graph, sess, valid):
     else:
         labels[:, 0] = 1
 
-    padded_questions, questions_length = pad_sequences(q, 0)
-    padded_passages, passages_length = pad_sequences(c, 0)
+    padded_questions, questions_length = pad_sequences(
+        q, config.max_question_length
+    )
+    padded_contexts, contexts_length = pad_sequences(
+        c, config.max_context_length
+    )
 
     input_feed = {
         graph.questions_ids: np.array(padded_questions),
-        graph.contexts_ids: np.array(padded_passages),
         graph.questions_length: np.array(questions_length),
-        graph.contexts_length: np.array(passages_length),
+        graph.questions_mask: masks(questions_length, config.max_question_length),
+        graph.contexts_ids: np.array(padded_contexts),
+        graph.contexts_length: np.array(contexts_length),
+        graph.contexts_mask: masks(contexts_length, config.max_context_length),
         graph.answers: np.array(a),
         graph.labels: labels,
         graph.dropout: 1
     }
 
-    output_feed = [graph.logits]
+    outputs = sess.run(graph.predictions, input_feed)
 
-    outputs = sess.run(output_feed, input_feed)
-
-    return outputs[0][0], outputs[0][1]
+    return outputs[0], outputs[1]
 
 
 def get_answers(graph, sess, dataset):

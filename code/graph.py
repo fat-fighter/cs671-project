@@ -6,11 +6,11 @@ from decoder import Decoder
 
 import numpy as np
 from tqdm import tqdm
+
 import tensorflow as tf
 
 
 CrossEntropy = tf.nn.sparse_softmax_cross_entropy_with_logits
-
 L2Regularizer = tf.contrib.layers.l2_regularizer
 
 
@@ -135,11 +135,13 @@ class Graph():
         self.optimizer = tf.train.AdamOptimizer(learning_rate)
 
         gradients = self.optimizer.compute_gradients(self.loss)
-        capped_gvs = [
+        clipped_gradients = [
             (tf.clip_by_value(grad, -10.0, 10.0), var)
             for grad, var in gradients
         ]
-        self.train_step = self.optimizer.apply_gradients(capped_gvs)
+        grad_check = tf.check_numerics(self.loss, "NaN detected")
+        with tf.control_dependencies([grad_check]):
+            self.train_step = self.optimizer.apply_gradients(clipped_gradients)
 
     def init_model(self, sess):
         ckpt = tf.train.get_checkpoint_state(config.train_dir)
@@ -169,10 +171,10 @@ class Graph():
                     break
 
                 questions_padded, questions_length = pad_sequences(
-                    np.array(batch[:, 0]), config.max_question_length
+                    batch[:, 0], config.max_question_length
                 )
                 contexts_padded, contexts_length = pad_sequences(
-                    np.array(batch[:, 1]), config.max_context_length
+                    batch[:, 1], config.max_context_length
                 )
 
                 labels = np.zeros(
@@ -184,20 +186,23 @@ class Graph():
                 else:
                     labels[:, 0] = 1
 
-                loss, _ = sess.run(
-                    [self.loss, self.train_step],
-                    feed_dict={
-                        self.questions_ids: np.array(questions_padded),
-                        self.questions_length: np.array(questions_length),
-                        self.questions_mask: masks(questions_length, config.max_question_length),
-                        self.contexts_ids: np.array(contexts_padded),
-                        self.contexts_length: np.array(contexts_length),
-                        self.contexts_mask: masks(contexts_length, config.max_context_length),
-                        self.answers: np.array([np.array(el[2]) for el in batch]),
-                        self.labels: labels,
-                        self.dropout: config.dropout_keep_prob
-                    }
-                )
+                try:
+                    loss, _ = sess.run(
+                        [self.loss, self.train_step],
+                        feed_dict={
+                            self.questions_ids: questions_padded,
+                            self.questions_length: questions_length,
+                            self.questions_mask: masks(questions_length, config.max_question_length),
+                            self.contexts_ids: contexts_padded,
+                            self.contexts_length: contexts_length,
+                            self.contexts_mask: masks(contexts_length, config.max_context_length),
+                            self.answers: [np.array(el[2]) for el in batch],
+                            self.labels: labels,
+                            self.dropout: config.dropout_keep_prob
+                        }
+                    )
+                except Exception as e:
+                    print "NaN detected for batch: " + str(i + 1)
 
                 print_dict["loss"] = "%.3f" % loss
                 pbar.set_postfix(print_dict)
