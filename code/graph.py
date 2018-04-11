@@ -1,5 +1,5 @@
 from includes import config
-from includes.utils import pad_sequences, masks
+from includes.utils import pad_sequences, masks, get_answers
 
 from encoder import Encoder
 from decoder import Decoder
@@ -63,6 +63,9 @@ class Graph():
             tf.float32, shape=[]
         )
 
+        self.encoder.keep_prob = self.dropout
+        self.decoder.keep_prob = self.dropout
+
     def init_variables(self):
         word_embeddings = tf.Variable(
             self.embeddings, dtype=tf.float32, trainable=config.train_embeddings
@@ -109,12 +112,12 @@ class Graph():
         )
 
         with tf.variable_scope("loss"):
-            reg_variables = tf.get_collection(
-                tf.GraphKeys.REGULARIZATION_LOSSES
-            )
-            regularization_term = tf.contrib.layers.apply_regularization(
-                L2Regularizer(config.regularization_constant), reg_variables
-            )
+            # reg_variables = tf.get_collection(
+            #     tf.GraphKeys.REGULARIZATION_LOSSES
+            # )
+            # regularization_term = tf.contrib.layers.apply_regularization(
+            #     L2Regularizer(config.regularization_constant), reg_variables
+            # )
 
             self.loss = tf.reduce_mean(
                 CrossEntropy(
@@ -123,16 +126,16 @@ class Graph():
                 CrossEntropy(
                     logits=self.predictions[1], labels=self.answers[:, 1]
                 )
-            ) + regularization_term
+            )
 
-        learning_rate = tf.train.exponential_decay(
-            config.learning_rate,
-            0,
-            config.decay_steps,
-            config.decay_rate,
-            staircase=True
-        )
-        self.optimizer = tf.train.AdamOptimizer(learning_rate)
+        # learning_rate = tf.train.exponential_decay(
+        #     config.learning_rate,
+        #     0,
+        #     config.decay_steps,
+        #     config.decay_rate,
+        #     staircase=True
+        # )
+        self.optimizer = tf.train.AdamOptimizer(config.learning_rate)
 
         gradients = self.optimizer.compute_gradients(self.loss)
         clipped_gradients = [
@@ -164,11 +167,55 @@ class Graph():
             sess.run(self.init)
             return False
 
+    def predict(self, sess, dataset, msg):
+
+        answers = []
+        ground_answers = []
+
+        with tqdm(dataset, desc=msg) as pbar:
+            for batch in pbar:
+                questions_padded, questions_length = pad_sequences(
+                    batch[:, 0], config.max_question_length
+                )
+                contexts_padded, contexts_length = pad_sequences(
+                    batch[:, 1], config.max_context_length
+                )
+
+                labels = np.zeros(
+                    (len(batch), config.n_clusters), dtype=np.float32
+                )
+                if config.clustering:
+                    for j, el in enumerate(batch):
+                        labels[j, el[3]] = 1
+                else:
+                    labels[:, 0] = 1
+
+                predictions = sess.run(
+                    self.predictions,
+                    feed_dict={
+                        self.questions_ids: questions_padded,
+                        self.questions_length: questions_length,
+                        self.questions_mask: masks(questions_length, config.max_question_length),
+                        self.contexts_ids: contexts_padded,
+                        self.contexts_length: contexts_length,
+                        self.contexts_mask: masks(contexts_length, config.max_context_length),
+                        self.labels: labels,
+                        self.dropout: 1.0
+                    }
+                )
+
+                answers += get_answers(predictions[0], predictions[1])
+                ground_answers += [np.array(el[2]) for el in batch]
+
+        return np.array(answers, dtype=np.float32), np.array(ground_answers, dtype=np.float32)
+
     def save_model(self, sess):
         self.saver.save(sess, "%s/trained_model.chk" % config.train_dir)
 
     def run_epoch(self, train_dataset, epoch, sess, max_batch_epochs=-1):
         print_dict = {"loss": "inf"}
+
+        losses = []
 
         with tqdm(train_dataset, postfix=print_dict) as pbar:
             pbar.set_description("epoch: %d" % (epoch + 1))
@@ -210,5 +257,11 @@ class Graph():
 
                     print_dict["loss"] = "%.3f" % loss
                     pbar.set_postfix(print_dict)
+
+                    losses.append(loss)
+
                 except Exception as e:
-                    print "NaN detected for batch: " + str(i + 1)
+                    # print "NaN detected for batch: " + str(i + 1)
+                    pass
+
+            return losses

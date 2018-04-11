@@ -4,14 +4,20 @@ import numpy as np
 from tqdm import tqdm
 
 from includes import config
-from includes.utils import squad_dataset
-from includes.evaluate import evaluate_model, test, get_answers
+from includes.utils import squad_dataset, evaluate
 
 from graph import Graph
 from encoder import Encoder
 from decoder import Decoder
 
 import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+%matplotlib inline
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+mpl.rcParams = mpl.rc_params_from_file("includes/matplotlibrc")
 
 root_dir = os.getcwd()
 
@@ -55,28 +61,47 @@ val_data = squad_dataset(
     batch_size=config.val_batch_size
 )
 
+
+def print_score(epoch, score):
+    print "\nepoch: %d, f1: %.4f, em: %.4f, em@1: %.4f, em@2: %.4f\n" % (
+        epoch, score[1], score[0][0], score[0][1][0], score[0][1][1]
+    )
+
+
+losses = []
+if os.path.exists(config.loss_path):
+    losses = list(np.load(config.loss_path))
+
 scores = []
+if os.path.exists(config.scores_path):
+    scores = list(np.load(config.scores_path))
 
-best_em = 0
+best_em = np.max([score[0][1] for score in scores]) or 0
 
-if init:
-    scores.append(evaluate_model(graph, sess, val_data))
-    print "\nepoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f\n" % (
-        0, scores[-1][0], scores[-1][1], scores[-1][2]
+if not init:
+    scores.append(
+        evaluate(graph, sess, val_data, "evaluating ... epoch: 0")
+    )
+    print_score(0, scores[-1])
+else:
+    score = evaluate(graph, sess, val_data, "evaluating ... epoch: 0")
+    print_score(0, score)
+
+for epoch in range(config.num_epochs)[:1]:
+
+    losses.append(graph.run_epoch(
+        train_data, epoch, sess, max_batch_epochs=-1)
     )
 
-    best_em = scores[-1][0]
-
-
-for epoch in range(config.num_epochs):
-
-    graph.run_epoch(train_data, epoch, sess, max_batch_epochs=-1)
-
-    scores.append(evaluate_model(graph, sess, val_data))
-    print "\nepoch: %d, em: %.4f, em@1: %.4f, em@2: %.4f\n" % (
-        epoch + 1, scores[-1][0], scores[-1][1], scores[-1][2]
+    scores.append(
+        evaluate(graph, sess, val_data,
+                 "evaluating ... epoch: %d" % (epoch + 1))
     )
+    print_score(epoch + 1, scores[-1])
 
-    if scores[-1][0] >= best_em:
+    if scores[-1][0][0] >= best_em:
         graph.save_model(sess)
-        best_em = scores[-1][0]
+        best_em = scores[-1][0][0]
+
+        np.save("data/plots/loss.npy", np.array(losses))
+        np.save("data/plots/scores.npy", np.array(scores))

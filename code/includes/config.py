@@ -19,7 +19,7 @@ n_clusters = 5 if clustering == "context" else 6
 
 num_epochs = 10
 batch_size = 30
-val_batch_size = 500
+val_batch_size = 100
 
 max_question_length = 30
 max_context_length = 400
@@ -36,11 +36,19 @@ train_dir = "model/k-match-lstm"
 if not os.path.exists(train_dir):
     os.makedirs(train_dir)
 
+plots_dir = "data/plots/"
+
+if not os.path.exists(plots_dir):
+    os.makedirs(plots_dir)
+
+loss_path = plots_dir + "loss.npy"
+scores_path = plots_dir + "scores.npy"
+
 vocab_path = data_dir + "/vocab.dat"
 embed_path = data_dir + "/glove.npz"
 
 dropout_keep_prob = 0.9
-regularization_constant = 0.001
+# regularization_constant = 0.001
 
 train_embeddings = False
 
@@ -52,7 +60,7 @@ decay_rate = 0.96
 
 max_gradient = 10.0
 
-load_model = False
+load_model = True
 
 
 def get_paths(mode):

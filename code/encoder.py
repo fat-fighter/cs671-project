@@ -11,7 +11,6 @@ class Encoder:
 
     def __init__(self, hidden_size, keep_prob):
         self.hidden_size = hidden_size
-        self.keep_prob = keep_prob
 
     def encode(self, vectors, lengths, questions_mask):
         questions, contexts = vectors

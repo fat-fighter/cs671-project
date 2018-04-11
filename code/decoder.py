@@ -13,7 +13,6 @@ class Decoder():
         self.encoded_size = encoded_size
 
         self.n_clusters = n_clusters
-        self.keep_prob = keep_prob
 
         self.initializer = tf.contrib.layers.xavier_initializer()
         self.regularizer = tf.contrib.layers.l2_regularizer(0.001)
@@ -82,10 +81,13 @@ class Decoder():
                 Hr_attend = tf.reduce_sum(tf.multiply(
                     output_attender, tf.expand_dims(s_prob, axis=[2])
                 ), axis=1)
-                e_f = tf.tanh(tf.matmul(output_attender, wr_e) +
-                              tf.expand_dims(
-                                  tf.matmul(Hr_attend, Wh), axis=[1])
-                              + br)
+                e_f = tf.tanh(
+                    tf.matmul(output_attender, wr_e) +
+                    tf.expand_dims(
+                        tf.matmul(Hr_attend, Wh), axis=[1]
+                    )
+                    + br
+                )
 
                 with tf.name_scope('end_score'):
                     e_score = tf.squeeze(tf.matmul(e_f, wf_e) + bf, axis=[2])
