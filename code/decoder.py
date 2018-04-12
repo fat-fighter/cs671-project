@@ -9,13 +9,14 @@ DynamicRNN = tf.nn.dynamic_rnn
 
 class Decoder():
 
-    def __init__(self, encoded_size, n_clusters, keep_prob):
+    def __init__(self, encoded_size, n_clusters):
         self.encoded_size = encoded_size
 
         self.n_clusters = n_clusters
 
+        self.keep_prob = None
+
         self.initializer = tf.contrib.layers.xavier_initializer()
-        self.regularizer = tf.contrib.layers.l2_regularizer(0.001)
 
     def decode(self, output_attender, contexts_mask):
         with tf.variable_scope("decoder"):
@@ -28,22 +29,19 @@ class Decoder():
                     'Wr' + str(k),
                     [4 * self.encoded_size, 2 * self.encoded_size],
                     dtype=tf.float32,
-                    initializer=self.initializer,
-                    regularizer=self.regularizer
+                    initializer=self.initializer
                 )
                 Wh = tf.get_variable(
                     'Wh' + str(k),
                     [4 * self.encoded_size, 2 * self.encoded_size],
                     dtype=tf.float32,
-                    initializer=self.initializer,
-                    regularizer=self.regularizer
+                    initializer=self.initializer
                 )
                 Wf = tf.get_variable(
                     'Wf' + str(k),
                     [2 * self.encoded_size, 1],
                     dtype=tf.float32,
-                    initializer=self.initializer,
-                    regularizer=self.regularizer
+                    initializer=self.initializer
                 )
                 br = tf.get_variable(
                     'br' + str(k),

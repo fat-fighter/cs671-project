@@ -17,7 +17,7 @@ n_clusters = 5 if clustering == "context" else 6
 # TRAINING
 
 
-num_epochs = 10
+num_epochs = 15
 batch_size = 30
 val_batch_size = 100
 
@@ -31,7 +31,7 @@ encoding_size = 64
 clustering = True
 
 data_dir = "data/squad/"
-train_dir = "model/k-match-lstm"
+train_dir = "model/k-match-lstm.clustered.weighted"
 
 if not os.path.exists(train_dir):
     os.makedirs(train_dir)
@@ -52,11 +52,11 @@ dropout_keep_prob = 0.9
 
 train_embeddings = False
 
-optimizer = "adam"
+optimizer = "adamax"
 
-learning_rate = 0.001
+learning_rate = 0.002
 decay_steps = 1000
-decay_rate = 0.96
+decay_rate = 0.92
 
 max_gradient = 10.0
 

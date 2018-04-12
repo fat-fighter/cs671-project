@@ -9,8 +9,10 @@ DynamicBiRNN = tf.nn.bidirectional_dynamic_rnn
 
 class Encoder:
 
-    def __init__(self, hidden_size, keep_prob):
+    def __init__(self, hidden_size):
         self.hidden_size = hidden_size
+
+        self.keep_prob = None
 
     def encode(self, vectors, lengths, questions_mask):
         questions, contexts = vectors

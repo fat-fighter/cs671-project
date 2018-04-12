@@ -63,6 +63,13 @@ class Graph():
             tf.float32, shape=[]
         )
 
+        self.w1 = tf.placeholder(
+            tf.float32, shape=[]
+        )
+        self.w2 = tf.placeholder(
+            tf.float32, shape=[]
+        )
+
         self.encoder.keep_prob = self.dropout
         self.decoder.keep_prob = self.dropout
 
@@ -112,30 +119,34 @@ class Graph():
         )
 
         with tf.variable_scope("loss"):
-            # reg_variables = tf.get_collection(
-            #     tf.GraphKeys.REGULARIZATION_LOSSES
-            # )
-            # regularization_term = tf.contrib.layers.apply_regularization(
-            #     L2Regularizer(config.regularization_constant), reg_variables
-            # )
 
             self.loss = tf.reduce_mean(
                 CrossEntropy(
                     logits=self.predictions[0], labels=self.answers[:, 0]
-                ) +
+                ) * self.w1 +
                 CrossEntropy(
                     logits=self.predictions[1], labels=self.answers[:, 1]
-                )
+                ) * self.w2
             )
 
-        # learning_rate = tf.train.exponential_decay(
-        #     config.learning_rate,
-        #     0,
-        #     config.decay_steps,
-        #     config.decay_rate,
-        #     staircase=True
-        # )
-        self.optimizer = tf.train.AdamOptimizer(config.learning_rate)
+        learning_rate = tf.train.exponential_decay(
+            config.learning_rate,
+            0,
+            config.decay_steps,
+            config.decay_rate,
+            staircase=True
+        )
+        if config.optimizer == "adamax":
+            print "\nUsing AdaMax Optimizer with lr: %f, decay_steps: %d, decay_rate: %f\n" \
+                % (config.learning_rate, config.decay_steps, config.decay_rate)
+
+            self.optimizer = tf.keras.optimizers.Adamax(learning_rate)
+
+        else:
+            print "\nUsing Adam Optimizer with lr: %f, decay_steps: %d, decay_rate: %f\n" \
+                % (config.learning_rate, config.decay_steps, config.decay_rate)
+
+            self.optimizer = tf.train.AdamOptimizer(learning_rate)
 
         gradients = self.optimizer.compute_gradients(self.loss)
         clipped_gradients = [
@@ -212,7 +223,7 @@ class Graph():
     def save_model(self, sess):
         self.saver.save(sess, "%s/trained_model.chk" % config.train_dir)
 
-    def run_epoch(self, train_dataset, epoch, sess, max_batch_epochs=-1):
+    def run_epoch(self, train_dataset, epoch, sess, max_batch_epochs=-1, w1=1.0, w2=1.0):
         print_dict = {"loss": "inf"}
 
         losses = []
@@ -251,6 +262,8 @@ class Graph():
                             self.contexts_mask: masks(contexts_length, config.max_context_length),
                             self.answers: [np.array(el[2]) for el in batch],
                             self.labels: labels,
+                            self.w1: w1,
+                            self.w2: w2,
                             self.dropout: config.dropout_keep_prob
                         }
                     )

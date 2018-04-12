@@ -13,7 +13,6 @@ from decoder import Decoder
 import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-%matplotlib inline
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -26,13 +25,11 @@ words_embedding = np.load(config.embed_path)["glove"]
 sess = tf.Session()
 
 encoder = Encoder(
-    config.encoding_size,
-    config.dropout_keep_prob
+    config.encoding_size
 )
 decoder = Decoder(
     config.encoding_size,
-    config.n_clusters,
-    config.dropout_keep_prob
+    config.n_clusters
 )
 
 graph = Graph(
@@ -68,29 +65,42 @@ def print_score(epoch, score):
     )
 
 
+w1 = w2 = 1.0
+
 losses = []
 if os.path.exists(config.loss_path):
     losses = list(np.load(config.loss_path))
 
+best_em = 0
 scores = []
 if os.path.exists(config.scores_path):
     scores = list(np.load(config.scores_path))
 
-best_em = np.max([score[0][1] for score in scores]) or 0
+    best_em = np.max([score[0][1] for score in scores])
 
 if not init:
+    losses = []
+    scores = []
+
     scores.append(
         evaluate(graph, sess, val_data, "evaluating ... epoch: 0")
     )
-    print_score(0, scores[-1])
-else:
-    score = evaluate(graph, sess, val_data, "evaluating ... epoch: 0")
-    print_score(0, score)
 
-for epoch in range(config.num_epochs)[:1]:
+    best_em = scores[-1][0][1]
+
+print_score(0, scores[-1])
+
+for epoch in range(config.num_epochs):
+    w1 = 1.0 / scores[-1][0][1][0]
+    w2 = 1.0 / scores[-1][0][1][1]
+
+    w = w1 + w2
+
+    w1 = 2 * w1 / w
+    w2 = 2 * w2 / w
 
     losses.append(graph.run_epoch(
-        train_data, epoch, sess, max_batch_epochs=-1)
+        train_data, epoch, sess, max_batch_epochs=-1, w1=w1, w2=w2)
     )
 
     scores.append(
