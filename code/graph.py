@@ -136,17 +136,11 @@ class Graph():
             config.decay_rate,
             staircase=True
         )
-        if config.optimizer == "adamax":
-            print "\nUsing AdaMax Optimizer with lr: %f, decay_steps: %d, decay_rate: %f\n" \
-                % (config.learning_rate, config.decay_steps, config.decay_rate)
 
-            self.optimizer = tf.keras.optimizers.Adamax(learning_rate)
+        print "\nUsing Adam Optimizer with lr: %f, decay_steps: %d, decay_rate: %f\n" \
+            % (config.learning_rate, config.decay_steps, config.decay_rate)
 
-        else:
-            print "\nUsing Adam Optimizer with lr: %f, decay_steps: %d, decay_rate: %f\n" \
-                % (config.learning_rate, config.decay_steps, config.decay_rate)
-
-            self.optimizer = tf.train.AdamOptimizer(learning_rate)
+        self.optimizer = tf.train.AdamOptimizer(learning_rate)
 
         gradients = self.optimizer.compute_gradients(self.loss)
         clipped_gradients = [
@@ -183,40 +177,44 @@ class Graph():
         answers = []
         ground_answers = []
 
-        with tqdm(dataset, desc=msg) as pbar:
-            for batch in pbar:
-                questions_padded, questions_length = pad_sequences(
-                    batch[:, 0], config.max_question_length
-                )
-                contexts_padded, contexts_length = pad_sequences(
-                    batch[:, 1], config.max_context_length
-                )
+        if msg != None:
+            pbar = tqdm(dataset, desc=msg)
+        else:
+            pbar = dataset
 
-                labels = np.zeros(
-                    (len(batch), config.n_clusters), dtype=np.float32
-                )
-                if config.clustering:
-                    for j, el in enumerate(batch):
-                        labels[j, el[3]] = 1
-                else:
-                    labels[:, 0] = 1
+        for batch in pbar:
+            questions_padded, questions_length = pad_sequences(
+                batch[:, 0], config.max_question_length
+            )
+            contexts_padded, contexts_length = pad_sequences(
+                batch[:, 1], config.max_context_length
+            )
 
-                predictions = sess.run(
-                    self.predictions,
-                    feed_dict={
-                        self.questions_ids: questions_padded,
-                        self.questions_length: questions_length,
-                        self.questions_mask: masks(questions_length, config.max_question_length),
-                        self.contexts_ids: contexts_padded,
-                        self.contexts_length: contexts_length,
-                        self.contexts_mask: masks(contexts_length, config.max_context_length),
-                        self.labels: labels,
-                        self.dropout: 1.0
-                    }
-                )
+            labels = np.zeros(
+                (len(batch), config.n_clusters), dtype=np.float32
+            )
+            if config.clustering:
+                for j, el in enumerate(batch):
+                    labels[j, el[3]] = 1
+            else:
+                labels[:, 0] = 1
 
-                answers += get_answers(predictions[0], predictions[1])
-                ground_answers += [np.array(el[2]) for el in batch]
+            predictions = sess.run(
+                self.predictions,
+                feed_dict={
+                    self.questions_ids: questions_padded,
+                    self.questions_length: questions_length,
+                    self.questions_mask: masks(questions_length, config.max_question_length),
+                    self.contexts_ids: contexts_padded,
+                    self.contexts_length: contexts_length,
+                    self.contexts_mask: masks(contexts_length, config.max_context_length),
+                    self.labels: labels,
+                    self.dropout: 1.0
+                }
+            )
+
+            answers += get_answers(predictions[0], predictions[1])
+            ground_answers += [np.array(el[2]) for el in batch]
 
         return np.array(answers, dtype=np.float32), np.array(ground_answers, dtype=np.float32)
 

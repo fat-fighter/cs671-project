@@ -30,13 +30,15 @@ encoding_size = 64
 
 clustering = True
 
+model_name = "k-match-lstm"
+
 data_dir = "data/squad/"
-train_dir = "model/k-match-lstm.clustered.weighted"
+train_dir = "model/" + model_name + "/"
 
 if not os.path.exists(train_dir):
     os.makedirs(train_dir)
 
-plots_dir = "data/plots/"
+plots_dir = "data/plots." + model_name + "/"
 
 if not os.path.exists(plots_dir):
     os.makedirs(plots_dir)
@@ -48,17 +50,16 @@ vocab_path = data_dir + "/vocab.dat"
 embed_path = data_dir + "/glove.npz"
 
 dropout_keep_prob = 0.9
-# regularization_constant = 0.001
 
 train_embeddings = False
 
-optimizer = "adamax"
+optimizer = "adam"
 
 learning_rate = 0.002
 decay_steps = 1000
 decay_rate = 0.92
 
-max_gradient = 10.0
+max_gradient = 5.0
 
 load_model = True
 
