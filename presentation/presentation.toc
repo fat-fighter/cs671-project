@@ -1,8 +1,0 @@
-\beamer@endinputifotherversion {3.36pt}
-\beamer@sectionintoc {1}{Dataset}{2}{0}{1}
-\beamer@sectionintoc {2}{Match-LSTM and Answer Pointer}{19}{0}{2}
-\beamer@sectionintoc {3}{Attention}{50}{0}{3}
-\beamer@subsectionintoc {3}{1}{Scaled Dot-Product Attention}{52}{0}{3}
-\beamer@subsectionintoc {3}{2}{Multi-Head Attention}{54}{0}{3}
-\beamer@sectionintoc {4}{Pointer-Net}{56}{0}{4}
-\beamer@sectionintoc {5}{Dynamic Programming}{58}{0}{5}
