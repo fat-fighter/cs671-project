@@ -4,7 +4,6 @@
 
 \usetheme{metropolis}
 \usepackage{appendixnumberbeamer}
-
 \usepackage{booktabs}
 \usepackage[scale=2]{ccicons}
 
@@ -19,6 +18,9 @@
 \date{\today}
 \author{}
 \institute{}
+
+\newcommand{\et}[1]{\textit{#1}}
+\newcommand{\tth}{$^{\text{th}}$}
 
 \setbeamercolor{alerted text}{fg=black}
 
@@ -64,7 +66,7 @@
 
 	\begin{figure}[H]
 		\centering
-		{\includegraphics[width=0.8\textwidth]{context_hist_fin.png}\label{fig:f1}}
+		{\includegraphics[width=0.8\textwidth]{includes/context_hist_fin.png}\label{fig:f1}}
 %   \caption{Histogram of Context Paragraph Lengths}
 	\end{figure}
 
@@ -77,7 +79,7 @@
 
 	\begin{figure}[H]
 		\centering
-		{\includegraphics[width=0.8\textwidth]{question_hist_fin.png}\label{fig:f1}}
+		{\includegraphics[width=0.8\textwidth]{includes/question_hist_fin.png}\label{fig:f1}}
 %   \caption{Histogram of Question Lengths}
 	\end{figure}
 
@@ -90,7 +92,7 @@
 
 	\begin{figure}[H]
 		\centering
-		{\includegraphics[width=0.7\textwidth]{ans_hist_fin.png}\label{fig:f1}}
+		{\includegraphics[width=0.7\textwidth]{includes/ans_hist_fin.png}\label{fig:f1}}
 %   \caption{Histogram of Context Paragraph Length}
 	\end{figure}
 
@@ -104,7 +106,7 @@
 
 	\begin{figure}[H]
 		\centering
-		{\includegraphics[width=0.9\textwidth]{dist.png}\label{fig:f1}}
+		{\includegraphics[width=0.9\textwidth]{includes/dist2.png}\label{fig:f1}}
 %   \caption{Histogram of Context Paragraph Length}
 	\end{figure}
 \end{frame}
@@ -222,16 +224,12 @@
 		\item The loss function for the Answer Pointer Layer is the Sigmoidal Cross-Entropy Loss
 		\item For each answer token, the cross entropy is computed and added to the total loss
 		\item For the boundary model, there are only two answer tokens, the start and the end
-		\item The loss is given as 
+		\item The loss is given as
 			\begin{align*}
 				- \log{p(a_s \,|\, \boldsymbol{P}_n, \boldsymbol{Q}_n)} - \log{p(a_e \,|\, \boldsymbol{P}_n, \boldsymbol{Q}_n)}
 			\end{align*}
 	\end{itemize}
 
-\end{frame}
-
-\begin{frame}{Weighted Loss}
-	
 \end{frame}
 
 \section{Attention}
@@ -249,7 +247,7 @@
 \begin{frame}{Scaled Dot-Product Attention}
 	\begin{figure}[ht!]
 		\centering
-		\includegraphics[height=100px]{Attention-Dot.png}
+		\includegraphics[height=100px]{includes/Attention-Dot.png}
 		\caption{Scaled Dot-Product Attention \et{\citep[Source:][]{--Attention is all you need}}}
 		\label{fig:dot-attention}
 	\end{figure}
@@ -260,8 +258,8 @@
 		\item Attention function is calculated on a set of queries simultaneously, packed together into a matrix Q.
 		\item The keys and values are packed together into matrices K and V.
 	\end{itemize}
-
 \end{frame}
+
 \begin{frame}{Scaled Dot-Product Attention}
 	\begin{center}
 		\[
@@ -278,7 +276,7 @@
 \begin{frame}{Multi-Head Attention}
 	\begin{figure}[ht!]
 		\centering
-		\includegraphics[height=100px]{Attention-Multi.png}
+		\includegraphics[height=100px]{includes/Attention-Multi.png}
 		\caption{Multi-Head Attention \et{\citep[Source:][]{--Attention is all you need}}}
 		\label{fig:multi-attention}
 	\end{figure}
