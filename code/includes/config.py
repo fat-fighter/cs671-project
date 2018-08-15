@@ -30,7 +30,7 @@ encoding_size = 64
 
 clustering = True
 
-model_name = "k-match-lstm"
+model_name = "weighted-k-match-lstm"
 
 data_dir = "data/squad/"
 train_dir = "model/" + model_name + "/"

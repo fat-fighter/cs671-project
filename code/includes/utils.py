@@ -3,7 +3,7 @@ import numpy as np
 
 
 class squad_dataset(object):
-    def __init__(self, question_file, context_file, answer_file, label_file, root="", batch_size=1):
+    def __init__(self, question_file, context_file, answer_file, label_file, root="", batch_size=1, split=True):
         self.question_file = root + question_file
         self.context_file = root + context_file
         self.answer_file = root + answer_file
@@ -12,12 +12,14 @@ class squad_dataset(object):
         self.batch_size = batch_size
 
         self.length = None
+        self.split = split
 
     def __iter_file(self, filename):
         with open(filename) as f:
             for line in f:
-                line = line.strip().split(" ")
-                line = map(lambda tok: int(tok), line)
+                if self.split:
+                    line = line.strip().split(" ")
+                    line = map(lambda tok: int(tok), line)
                 yield line
 
     def __iter__(self):

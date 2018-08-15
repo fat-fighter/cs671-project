@@ -1,0 +1,10 @@
+\frametitle{LSTM Preprocessing Layer}
+
+	\begin{itemize}[<+- | alert@+>]
+		\item The purpose of the \et{LSTM Preprocessing Layer} is to incorporate contextual information into the representation of each token in the context and the question.
+		\item \begin{align*}
+				\boldsymbol{H}^p = \overrightarrow{\text{LSTM}}(\boldsymbol{P}), \quad\quad
+				\boldsymbol{H}^q	=	\overrightarrow{\text{LSTM}}(\boldsymbol{Q})
+			\end{align*}
+		\item The matrices $\boldsymbol{H}^p$ and $\boldsymbol{H}^q$ represent the hidden representations of the context and the question matrices, respectively.
+	\end{itemize}
